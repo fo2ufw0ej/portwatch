@@ -82,3 +82,21 @@ func TestLoad_MissingFile(t *testing.T) {
 		t.Fatal("expected error for missing file")
 	}
 }
+
+func TestLoad_EmptyFileUsesDefaults(t *testing.T) {
+	path := writeTempConfig(t, ``)
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("unexpected error for empty config: %v", err)
+	}
+	defaults := DefaultConfig()
+	if cfg.ScanInterval != defaults.ScanInterval {
+		t.Errorf("expected default scan interval %v, got %v", defaults.ScanInterval, cfg.ScanInterval)
+	}
+	if cfg.PortRange.From != defaults.PortRange.From || cfg.PortRange.To != defaults.PortRange.To {
+		t.Errorf("expected default port range %+v, got %+v", defaults.PortRange, cfg.PortRange)
+	}
+	if cfg.AlertOutput != defaults.AlertOutput {
+		t.Errorf("expected default alert output %q, got %q", defaults.AlertOutput, cfg.AlertOutput)
+	}
+}
