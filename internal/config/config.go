@@ -1,6 +1,8 @@
+// Package config loads and validates portwatch configuration.
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -8,74 +10,72 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config holds the portwatch daemon configuration.
+// Config holds all runtime configuration for portwatch.
 type Config struct {
-	ScanInterval time.Duration `yaml:"-"`
-	ScanIntervalRaw string     `yaml:"scan_interval"`
-	PortRange       PortRange  `yaml:"port_range"`
-	AlertOutput     string     `yaml:"alert_output"`
-	LogLevel        string     `yaml:"log_level"`
+	Interval    time.Duration `yaml:"interval"`
+	PortRange   PortRange     `yaml:"port_range"`
+	AlertWindow time.Duration `yaml:"alert_window"`
+	AlertBurst  int           `yaml:"alert_burst"`
+	StatePath   string        `yaml:"state_path"`
+	LogPath     string        `yaml:"log_path"`
+	Format      string        `yaml:"format"`
 }
 
-// PortRange defines the inclusive range of ports to scan.
+// PortRange defines the inclusive [Low, High] port scan range.
 type PortRange struct {
-	From int `yaml:"from"`
-	To   int `yaml:"to"`
+	Low  int `yaml:"low"`
+	High int `yaml:"high"`
 }
 
 // DefaultConfig returns a Config populated with sensible defaults.
-func DefaultConfig() *Config {
-	return &Config{
-		ScanInterval:    30 * time.Second,
-		ScanIntervalRaw: "30s",
-		PortRange: PortRange{
-			From: 1,
-			To:   65535,
-		},
-		AlertOutput: "stdout",
-		LogLevel:    "info",
+func DefaultConfig() Config {
+	return Config{
+		Interval:    30 * time.Second,
+		PortRange:   PortRange{Low: 1, High: 1024},
+		AlertWindow: time.Minute,
+		AlertBurst:  5,
+		StatePath:   "/tmp/portwatch_state.json",
+		LogPath:     "/tmp/portwatch_history.json",
+		Format:      "text",
 	}
 }
 
-// Load reads a YAML config file from path and returns a validated Config.
-func Load(path string) (*Config, error) {
+// Load reads a YAML config file from path and merges it over defaults.
+// Returns an error if the file cannot be read or values are invalid.
+func Load(path string) (Config, error) {
+	cfg := DefaultConfig()
+
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("reading config file: %w", err)
+		return cfg, fmt.Errorf("read config: %w", err)
 	}
 
-	cfg := DefaultConfig()
-	if err := yaml.Unmarshal(data, cfg); err != nil {
-		return nil, fmt.Errorf("parsing config file: %w", err)
-	}
-
-	if cfg.ScanIntervalRaw != "" {
-		d, err := time.ParseDuration(cfg.ScanIntervalRaw)
-		if err != nil {
-			return nil, fmt.Errorf("invalid scan_interval %q: %w", cfg.ScanIntervalRaw, err)
-		}
-		cfg.ScanInterval = d
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return cfg, fmt.Errorf("parse config: %w", err)
 	}
 
 	if err := cfg.validate(); err != nil {
-		return nil, fmt.Errorf("invalid config: %w", err)
+		return cfg, fmt.Errorf("invalid config: %w", err)
 	}
 
 	return cfg, nil
 }
 
-func (c *Config) validate() error {
-	if c.PortRange.From < 1 || c.PortRange.From > 65535 {
-		return fmt.Errorf("port_range.from must be between 1 and 65535, got %d", c.PortRange.From)
+func (c Config) validate() error {
+	if c.Interval <= 0 {
+		return errors.New("interval must be positive")
 	}
-	if c.PortRange.To < 1 || c.PortRange.To > 65535 {
-		return fmt.Errorf("port_range.to must be between 1 and 65535, got %d", c.PortRange.To)
+	if c.PortRange.Low < 1 || c.PortRange.High > 65535 || c.PortRange.Low > c.PortRange.High {
+		return fmt.Errorf("invalid port range [%d, %d]", c.PortRange.Low, c.PortRange.High)
 	}
-	if c.PortRange.From > c.PortRange.To {
-		return fmt.Errorf("port_range.from (%d) must be <= port_range.to (%d)", c.PortRange.From, c.PortRange.To)
+	if c.AlertBurst < 1 {
+		return errors.New("alert_burst must be at least 1")
 	}
-	if c.ScanInterval <= 0 {
-		return fmt.Errorf("scan_interval must be positive")
+	if c.AlertWindow <= 0 {
+		return errors.New("alert_window must be positive")
+	}
+	if c.Format != "text" && c.Format != "json" {
+		return fmt.Errorf("unsupported format %q: must be text or json", c.Format)
 	}
 	return nil
 }
