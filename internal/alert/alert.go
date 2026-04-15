@@ -41,6 +41,7 @@ func NewNotifier(w io.Writer) *Notifier {
 }
 
 // Notify formats and writes alerts derived from a scanner.Diff.
+// It returns all alerts generated for both newly opened and closed ports.
 func (n *Notifier) Notify(diff scanner.Diff) []Alert {
 	var alerts []Alert
 	now := time.Now()
@@ -68,6 +69,19 @@ func (n *Notifier) Notify(diff scanner.Diff) []Alert {
 	}
 
 	return alerts
+}
+
+// NotifyInfo writes an informational alert with the given message.
+// This is useful for surfacing non-critical status updates (e.g. scan start/stop).
+func (n *Notifier) NotifyInfo(message string) Alert {
+	a := Alert{
+		Timestamp: time.Now(),
+		Level:     LevelInfo,
+		Message:   message,
+		Port:      0,
+	}
+	n.write(a)
+	return a
 }
 
 func (n *Notifier) write(a Alert) {
