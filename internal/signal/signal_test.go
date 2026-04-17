@@ -36,6 +36,13 @@ func TestHandler_StopCancelsContext(t *testing.T) {
 	}
 }
 
+func TestHandler_StopIsIdempotent(t *testing.T) {
+	h, _ := signal.New(context.Background())
+	// Calling Stop multiple times should not panic.
+	h.Stop()
+	h.Stop()
+}
+
 func TestDefaultConfig(t *testing.T) {
 	cfg := signal.DefaultConfig()
 	if len(cfg.Signals) == 0 {
