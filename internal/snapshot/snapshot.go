@@ -52,6 +52,23 @@ func (s *Snapshot) Contains(port int) bool {
 	return false
 }
 
+// Diff returns the ports opened and closed between s and a newer snapshot.
+// opened contains ports present in other but not in s.
+// closed contains ports present in s but not in other.
+func (s *Snapshot) Diff(other *Snapshot) (opened, closed []int) {
+	for _, p := range other.Ports {
+		if !s.Contains(p) {
+			opened = append(opened, p)
+		}
+	}
+	for _, p := range s.Ports {
+		if !other.Contains(p) {
+			closed = append(closed, p)
+		}
+	}
+	return opened, closed
+}
+
 // Summary returns a human-readable one-line description of the snapshot.
 func (s *Snapshot) Summary() string {
 	if len(s.Ports) == 0 {
