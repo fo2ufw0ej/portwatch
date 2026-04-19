@@ -27,17 +27,11 @@ func DefaultConfig() Config {
 
 // Validate checks that the Config fields are valid.
 func (c Config) Validate() error {
-	if c.Port < 1 || c.Port > 65535 {
-		return fmt.Errorf("healthcheck: port %d out of range (1-65535)", c.Port)
-	}
 	if c.Host == "" {
 		return errors.New("healthcheck: host must not be empty")
 	}
-	if net.ParseIP(c.Host) == nil {
-		// Allow hostnames too; only reject clearly empty strings.
-		if len(c.Host) == 0 {
-			return errors.New("healthcheck: invalid host")
-		}
+	if c.Port < 1 || c.Port > 65535 {
+		return fmt.Errorf("healthcheck: port %d out of range (1-65535)", c.Port)
 	}
 	return nil
 }
@@ -45,4 +39,15 @@ func (c Config) Validate() error {
 // Addr returns the combined host:port address string.
 func (c Config) Addr() string {
 	return fmt.Sprintf("%s:%d", c.Host, c.Port)
+}
+
+// IsListening reports whether the health check server address is currently
+// accepting connections. Useful for readiness checks in tests.
+func (c Config) IsListening() bool {
+	conn, err := net.Dial("tcp", c.Addr())
+	if err != nil {
+		return false
+	}
+	conn.Close()
+	return true
 }
