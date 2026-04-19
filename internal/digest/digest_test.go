@@ -32,11 +32,26 @@ func TestCompute_EmptyPorts(t *testing.T) {
 	}
 }
 
+func TestCompute_NilAndEmpty(t *testing.T) {
+	a := digest.Compute(nil)
+	b := digest.Compute([]int{})
+	if !digest.Equal(a, b) {
+		t.Errorf("expected equal digests for nil and empty port sets")
+	}
+}
+
 func TestChanged(t *testing.T) {
 	prev := digest.Compute([]int{80})
 	next := digest.Compute([]int{80, 443})
 	if !digest.Changed(prev, next) {
 		t.Errorf("expected Changed to return true")
+	}
+}
+
+func TestChanged_Same(t *testing.T) {
+	d := digest.Compute([]int{80, 443})
+	if digest.Changed(d, d) {
+		t.Errorf("expected Changed to return false for identical digests")
 	}
 }
 
