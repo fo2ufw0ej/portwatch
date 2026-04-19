@@ -51,8 +51,23 @@ func TestRun_StepError_Propagates(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
-	if !errors.Is(err, errors.New("boom")) && err.Error() == "" {
-		t.Errorf("unexpected error message: %v", err)
+	if err.Error() != "boom" {
+		t.Errorf("expected error message %q, got %q", "boom", err.Error())
+	}
+}
+
+func TestRun_StepError_StopsExecution(t *testing.T) {
+	afterErrorCalled := false
+	pl := pipeline.New(errorStep("stop here"), func(_ context.Context, ports []int) ([]int, error) {
+		afterErrorCalled = true
+		return ports, nil
+	})
+	_, err := pl.Run(context.Background(), nil)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if afterErrorCalled {
+		t.Error("step after error should not have been called")
 	}
 }
 
