@@ -44,3 +44,15 @@ func (c Config) Validate() error {
 func NewFromConfig(cfg Config) (*Retrier, error) {
 	return New(cfg)
 }
+
+// WithMaxAttempts returns a copy of the config with MaxAttempts set to n.
+func (c Config) WithMaxAttempts(n int) Config {
+	c.MaxAttempts = n
+	return c
+}
+
+// WithInitialInterval returns a copy of the config with InitialInterval set to d.
+func (c Config) WithInitialInterval(d time.Duration) Config {
+	c.InitialInterval = d
+	return c
+}
