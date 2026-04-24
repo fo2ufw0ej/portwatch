@@ -35,7 +35,10 @@ func (r *realTicker) Stop() {
 // runLoop executes fn on every tick until ctx is cancelled.
 // It calls fn once immediately before waiting for the first tick so that
 // the daemon produces output without waiting for the first interval to elapse.
-func runLoop(ctx context.Context, tk ticker, fn func()){
+// The ticker is stopped automatically when the context is cancelled.
+func runLoop(ctx context.Context, tk ticker, fn func()) {
+	defer tk.Stop()
+
 	// Execute immediately on start so users see output right away.
 	fn()
 
