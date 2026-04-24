@@ -35,3 +35,24 @@ func TestNewFromConfig_Valid(t *testing.T) {
 		t.Fatal("expected non-nil cooldown")
 	}
 }
+
+func TestNewFromConfig_InvalidConfig(t *testing.T) {
+	tests := []struct {
+		name   string
+		period time.Duration
+	}{
+		{"zero period", 0},
+		{"negative period", -time.Second},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cd, err := NewFromConfig(Config{Period: tt.period})
+			if err == nil {
+				t.Fatalf("expected error for period %v", tt.period)
+			}
+			if cd != nil {
+				t.Fatal("expected nil cooldown on error")
+			}
+		})
+	}
+}
