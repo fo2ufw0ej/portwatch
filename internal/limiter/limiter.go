@@ -73,3 +73,21 @@ func (l *Limiter) NextAllowed() time.Time {
 	}
 	return l.last.Add(l.cfg.MinInterval)
 }
+
+// Wait blocks until the limiter would allow a scan, then records the time and
+// returns. It is equivalent to sleeping until NextAllowed and then calling
+// Allow, but avoids a potential race between the two operations.
+func (l *Limiter) Wait() {
+	for {
+		now := time.Now()
+		l.mu.Lock()
+		if l.last.IsZero() || now.Sub(l.last) >= l.cfg.MinInterval {
+			l.last = now
+			l.mu.Unlock()
+			return
+		}
+		waitUntil := l.last.Add(l.cfg.MinInterval)
+		l.mu.Unlock()
+		time.Sleep(time.Until(waitUntil))
+	}
+}
